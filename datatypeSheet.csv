@@ -1,0 +1,14 @@
+Column,Datatype,Size
+Number,Varchar,50
+Name,Varchar,255
+Type1,Varchar,50
+Type2,Varchar,50
+Total,Int,
+HP,Int,
+Attack,Int,
+Defense,Int,
+SpAtk,Int,
+SpDef,Int,
+Speed,Int,
+Generation,Int,
+Legendary,Int,
