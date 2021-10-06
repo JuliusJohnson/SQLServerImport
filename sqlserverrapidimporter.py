@@ -1,8 +1,7 @@
 #importing sql library
 import sqlalchemy, os
 import pandas as pd
-from sqlalchemy.exc import ProgrammingError
-from dev import settings as setting
+from dev import setup as setting
 from pprint import pprint
 
 
@@ -16,10 +15,17 @@ schema = setting.schema
 
 engine = sqlalchemy.create_engine('mssql+pyodbc://' + server + '/' + database + '?driver=SQL+Server')
 
+def dataTypeProcessor(file,dictionary,i,dfColumn):
+    if file["Datatype"][i] == "Varchar":
+        dictionary[dfColumn] = sqlalchemy.types.VARCHAR(length=int(file["Size"][i]))
+    elif file["Datatype"][i] == "Int":
+        dictionary[dfColumn] = sqlalchemy.types.INT
+    else:
+        pprint("Invalid")
 
 def csvToSQL(isCustom,filePath):
     dataTypeDict = {}
-    i = 0
+    iterator = 0
 
     for file in os.listdir(directory):
         # Import CSV
@@ -35,15 +41,10 @@ def csvToSQL(isCustom,filePath):
         else:
             dataTypeFile = pd.read_csv(filePath)
             if dataTypeFile.shape[0] == numOfClolumnsInData:
-                while i < numOfClolumnsInData:
+                while iterator < numOfClolumnsInData:
                     for column in df.columns:
-                        if dataTypeFile["Datatype"][i] == "Varchar":
-                            dataTypeDict[column] = sqlalchemy.types.VARCHAR(length=int(dataTypeFile["Size"][i]))
-                        elif dataTypeFile["Datatype"][i] == "Int":
-                            dataTypeDict[column] = sqlalchemy.types.INT
-                        else:
-                            pprint("Invalid")
-                        i = i + 1
+                        dataTypeProcessor(dataTypeFile,dataTypeDict,iterator,column)
+                        iterator = iterator + 1
             else:
                 pprint("Please check the number of columns in the specified spreadsheet. They do not match the number of columns in the CSV you want to import to SQL Server")
                 break
@@ -55,7 +56,7 @@ def csvToSQL(isCustom,filePath):
         #Insert Dataframe into SQL Server. If the Table exisit alreadt it will replace.
         try:
             df.to_sql(tableName, con = engine, if_exists='replace', index = False, dtype=dataTypeDict, schema=schema)
-        except ProgrammingError:
+        except sqlalchemy.exc.ProgrammingError:
             pprint("There is likely a problem with the settings entered. Please double check server permissions and specified database settings.")
             break
     
