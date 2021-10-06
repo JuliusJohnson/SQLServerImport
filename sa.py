@@ -1,18 +1,18 @@
 #importing sql library
-from sqlalchemy import create_engine
-import sqlalchemy
+import sqlalchemy, os
 import pandas as pd
-import os
+from dev import settings as setting
+
 
 from sqlalchemy.sql.sqltypes import VARCHAR
 
-directory = r'G:\SampleDataset\samples\pkmn'
-server = ""
-database = ""
-Trusted_Connection = ""
-schema = ""
+directory = setting.directory
+server = setting.server
+database = setting.database
+Trusted_Connection = setting.Trusted_Connection
+schema = setting.schema
 
-engine = create_engine('mssql+pyodbc://' + server + '/' + database + '?driver=SQL+Server')
+engine = sqlalchemy.create_engine('mssql+pyodbc://' + server + '/' + database + '?driver=SQL+Server')
 
 
 def csvToSQL(isCustom,filePath):
@@ -34,7 +34,7 @@ def csvToSQL(isCustom,filePath):
             dataTypeFile = pd.read_csv(filePath)
             print(len(dataTypeFile.columns))
             if dataTypeFile.shape[0] == numOfClolumnsInData:
-                while i < 13:
+                while i < numOfClolumnsInData:
                     for column in df.columns:
                         if dataTypeFile["Datatype"][i] == "Varchar":
                             dataTypeDict[column] = sqlalchemy.types.VARCHAR(length=int(dataTypeFile["Size"][i]))
@@ -56,6 +56,6 @@ def csvToSQL(isCustom,filePath):
     
         # show the complete data
         # from Employee_Data table
-        print(engine.execute(f"SELECT * FROM {tableName}").fetchall())
+        print(engine.execute(f"SELECT TOP (5) * FROM {tableName}").fetchall())
 
 csvToSQL(True,"datatypeSheet.csv")
