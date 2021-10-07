@@ -1,21 +1,19 @@
-#importing sql library
+#importing sql libraries
 import sqlalchemy, os
 import pandas as pd
 from dev import setup as setting
 from pprint import pprint
 
-
-from sqlalchemy.sql.sqltypes import VARCHAR
-
-directory = setting.directory
-server = setting.server
-database = setting.database
+#Setting up variables that wil be used throughout the script
+directory = setting.directory #file directory
+server = setting.server #Database Server
+database = setting.database #Name of Database
 Trusted_Connection = setting.Trusted_Connection
-schema = setting.schema
+schema = setting.schema #Database Schema
 
-engine = sqlalchemy.create_engine('mssql+pyodbc://' + server + '/' + database + '?driver=SQL+Server')
+engine = sqlalchemy.create_engine('mssql+pyodbc://' + server + '/' + database + '?driver=SQL+Server') #Create a database object 
 
-def dataTypeProcessor(file,dictionary,i,dfColumn):
+def dataTypeProcessor(file,dictionary,i,dfColumn): # Fuction that defines how SQL datatypes in sql alchemy
     if file["Datatype"][i] == "Varchar":
         dictionary[dfColumn] = sqlalchemy.types.VARCHAR(length=int(file["Size"][i]))
     elif file["Datatype"][i] == "Int":
@@ -23,46 +21,41 @@ def dataTypeProcessor(file,dictionary,i,dfColumn):
     else:
         pprint("Invalid")
 
-def csvToSQL(isCustom,filePath):
-    dataTypeDict = {}
-    iterator = 0
+def csvToSQL(isCustom,filePath): #Function that creates CSV to SQL Table
+    dataTypeDict = {} #Empty variable that will contain a dictionary that contains key value pairs of Columns Name and Datatype 
+    iterator = 0 #Simple counter for loop. 
 
-    for file in os.listdir(directory):
-        # Import CSV
-        data = pd.read_csv (directory + "\\" + file)   
-        df = pd.DataFrame(data)
+    for file in os.listdir(directory): #Loop that will process each file in the specified directory
+        data = pd.read_csv (directory + "\\" + file) #Import CSV
+        df = pd.DataFrame(data) #assign pandas dataframe to variable "df"
         #df = df.replace(np.nan, 0)
-        numOfClolumnsInData = (len(df.columns))
+        numOfColumns = (len(df.columns)) #Asigns the number of columns in the data frame to the variable "numOfColumns"
         
-        if isCustom != True:
+        if isCustom != True: #If isCustom does not euqal true then the program will default to assign data to varchar
+            #add some smart logic to determin length
             for column in df.columns:
-                dataTypeDict[column] = sqlalchemy.types.VARCHAR(length=255)
+                dataTypeDict[column] = sqlalchemy.types.VARCHAR(length=255) #For each column in dataframe asign the dictionary value a varchar with a maxmium length
 
-        else:
-            dataTypeFile = pd.read_csv(filePath)
-            if dataTypeFile.shape[0] == numOfClolumnsInData:
-                while iterator < numOfClolumnsInData:
-                    for column in df.columns:
+        else: #If is Customer Is "True"
+            dataTypeFile = pd.read_csv(filePath) #Read the customer data types in the CSV file
+            if dataTypeFile.shape[0] == numOfColumns: #If the number of columns is equal to the number of columns in the dataframe continue
+                while iterator < numOfColumns: #Perform a loop iteration for each column as long as there are columns to iterate through
+                    for column in df.columns: #for each column in the data frame perform the "DataTypeProcessor" function
                         dataTypeProcessor(dataTypeFile,dataTypeDict,iterator,column)
-                        iterator = iterator + 1
+                        iterator = iterator + 1 #Process the next column
             else:
                 pprint("Please check the number of columns in the specified spreadsheet. They do not match the number of columns in the CSV you want to import to SQL Server")
-                break
-                
-        #print(dataTypeDict)
-        # Create Table
-        tableName = str(str(file).replace(".csv",""))
+                break #End Program
+        
+        tableName = str(str(file).replace(".csv","")) #Create Table Name
     
-        #Insert Dataframe into SQL Server. If the Table exisit alreadt it will replace.
-        try:
-            df.to_sql(tableName, con = engine, if_exists='replace', index = False, dtype=dataTypeDict, schema=schema)
-        except sqlalchemy.exc.ProgrammingError:
+        try: #Some simple error handling that handles incorrect database values such as schema, database name, etc...
+            df.to_sql(tableName, con = engine, if_exists='replace', index = False, dtype=dataTypeDict, schema=schema) #Insert Dataframe into SQL Server. If the Table exisit alreadt it will replace.
+        except sqlalchemy.exc.ProgrammingError: #If a programming Error is found then print and quit program
             pprint("There is likely a problem with the settings entered. Please double check server permissions and specified database settings.")
-            break
+            break # End Program
     
-        # show the complete data
-        # from Employee_Data table
-        pprint(engine.execute(f"SELECT TOP (5) * FROM {tableName}").fetchall())
-        pprint("Job Complete")
+        pprint(engine.execute(f"SELECT TOP (5) * FROM {tableName}").fetchall()) #show the sample data from Employee_Data table
+        pprint("\n Job Complete") #Print Completion Message
 
-csvToSQL(True,"datatypeSheet.csv")
+csvToSQL(True,"datatypeSheet.csv") #Run the program
