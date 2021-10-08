@@ -32,9 +32,17 @@ def csvToSQL(isCustom,filePath): #Function that creates CSV to SQL Table
         numOfColumns = (len(df.columns)) #Asigns the number of columns in the data frame to the variable "numOfColumns"
         
         if isCustom != True: #If isCustom does not euqal true then the program will default to assign data to varchar
-            #add some smart logic to determin length
+            try:
+                if df.size < 100000:
+                    samplesize = 1
+                else:
+                    samplesize = 100000/int(df.size) 
+                maxLength  = int(df.sample(frac = samplesize).to_numpy(dtype = str, na_value="X").dtype.itemsize)*3
+            except:
+                maxLength = 4000
+
             for column in df.columns:
-                dataTypeDict[column] = sqlalchemy.types.VARCHAR(length=255) #For each column in dataframe asign the dictionary value a varchar with a maxmium length
+                dataTypeDict[column] = sqlalchemy.types.VARCHAR(length=maxLength) #For each column in dataframe asign the dictionary value a varchar with a maxmium length
 
         else: #If is Customer Is "True"
             dataTypeFile = pd.read_csv(filePath) #Read the customer data types in the CSV file
@@ -56,6 +64,6 @@ def csvToSQL(isCustom,filePath): #Function that creates CSV to SQL Table
             break # End Program
     
         pprint(engine.execute(f"SELECT TOP (5) * FROM {tableName}").fetchall()) #show the sample data from Employee_Data table
-        pprint("\n Job Complete") #Print Completion Message
+        pprint("Job Complete") #Print Completion Message
 
-csvToSQL(True,"datatypeSheet.csv") #Run the program
+csvToSQL(False,"datatypeSheet.csv") #Run the program
