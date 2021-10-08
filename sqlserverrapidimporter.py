@@ -39,6 +39,7 @@ def csvToSQL(isCustom,filePath): #Function that creates CSV to SQL Table
                     samplesize = 100000/int(df.size) 
                 maxLength  = int(df.sample(frac = samplesize).to_numpy(dtype = str, na_value="X").dtype.itemsize)*3
             except:
+                print("There was some error set the varchar length to 4000")
                 maxLength = 4000
 
             for column in df.columns:
@@ -67,3 +68,9 @@ def csvToSQL(isCustom,filePath): #Function that creates CSV to SQL Table
         pprint("Job Complete") #Print Completion Message
 
 csvToSQL(False,"datatypeSheet.csv") #Run the program
+
+#TODO Do something about encoding
+# More error handing
+#Performance and Unit testing??
+#implement cmd interface
+#Add support for Excel and Google Sheets
