@@ -21,12 +21,21 @@ def dataTypeProcessor(file,dictionary,i,dfColumn): # Fuction that defines how SQ
     else:
         pprint("Invalid")
 
-def csvToSQL(isCustom,filePath): #Function that creates CSV to SQL Table
+def csvToSQL(isCustom,folderPath): #Function that creates CSV to SQL Table
     dataTypeDict = {} #Empty variable that will contain a dictionary that contains key value pairs of Columns Name and Datatype 
     iterator = 0 #Simple counter for loop. 
 
-    for file in os.listdir(directory): #Loop that will process each file in the specified directory
-        data = pd.read_csv (directory + "\\" + file) #Import CSV
+    #File/Directory Validation
+    if os.path.isfile(folderPath):
+        files = [folderPath]
+    elif os.path.isdir(folderPath):
+        files = [os.path.abspath(folderPath) + "\\" + file for file in os.listdir(directory) if file[-4:] == '.csv' or file[-4:] == '.txt' in str(file)]
+    else:
+        print("Please Provide a valid file in the \".csv\" format.")
+
+    for file in files: #Loop that will process each file in the specified directory
+        #if file extention is valid
+        data = pd.read_csv (file) #Import CSV
         df = pd.DataFrame(data) #assign pandas dataframe to variable "df"
         #df = df.replace(np.nan, 0)
         numOfColumns = (len(df.columns)) #Asigns the number of columns in the data frame to the variable "numOfColumns"
@@ -45,8 +54,8 @@ def csvToSQL(isCustom,filePath): #Function that creates CSV to SQL Table
             for column in df.columns:
                 dataTypeDict[column] = sqlalchemy.types.VARCHAR(length=maxLength) #For each column in dataframe asign the dictionary value a varchar with a maxmium length
 
-        else: #If is Customer Is "True"
-            dataTypeFile = pd.read_csv(filePath) #Read the customer data types in the CSV file
+        else: #If is Custom Is "True"
+            dataTypeFile = pd.read_csv(folderPath) #Read the customer data types in the CSV file
             if dataTypeFile.shape[0] == numOfColumns: #If the number of columns is equal to the number of columns in the dataframe continue
                 while iterator < numOfColumns: #Perform a loop iteration for each column as long as there are columns to iterate through
                     for column in df.columns: #for each column in the data frame perform the "DataTypeProcessor" function
@@ -56,7 +65,7 @@ def csvToSQL(isCustom,filePath): #Function that creates CSV to SQL Table
                 pprint("Please check the number of columns in the specified spreadsheet. They do not match the number of columns in the CSV you want to import to SQL Server")
                 break #End Program
         
-        tableName = str(str(file).replace(".csv","")) #Create Table Name
+        tableName = str(str(os.path.basename(file)).replace(".csv","")) #Create Table Name
     
         try: #Some simple error handling that handles incorrect database values such as schema, database name, etc...
             df.to_sql(tableName, con = engine, if_exists='replace', index = False, dtype=dataTypeDict, schema=schema) #Insert Dataframe into SQL Server. If the Table exisit alreadt it will replace.
@@ -67,7 +76,7 @@ def csvToSQL(isCustom,filePath): #Function that creates CSV to SQL Table
         pprint(engine.execute(f"SELECT TOP (5) * FROM {tableName}").fetchall()) #show the sample data from Employee_Data table
         pprint("Job Complete") #Print Completion Message
 
-csvToSQL(False,"datatypeSheet.csv") #Run the program
+csvToSQL(False,r'datatypeSheet.csv') #Run the program
 
 #TODO Do something about encoding
 # More error handing
