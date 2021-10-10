@@ -1,5 +1,5 @@
 #importing sql libraries
-import sqlalchemy, os
+import sqlalchemy, os, mimetypes
 import pandas as pd
 from dev import setup as setting
 from pprint import pprint
@@ -26,10 +26,11 @@ def csvToSQL(isCustom,folderPath): #Function that creates CSV to SQL Table
     iterator = 0 #Simple counter for loop. 
 
     #File/Directory Validation
-    if os.path.isfile(folderPath):
-        files = [folderPath]
+    if os.path.isfile(folderPath) and mimetypes.guess_type(folderPath)[0] == 'text/csv' and folderPath[-4:] == '.csv' or folderPath[-4:] == '.txt': #Determines if is a file and if the mimetype and file extention is of a text format.
+        files = [folderPath] #puts file in a list to be passed through a loop in the next step
     elif os.path.isdir(folderPath):
-        files = [os.path.abspath(folderPath) + "\\" + file for file in os.listdir(directory) if file[-4:] == '.csv' or file[-4:] == '.txt' in str(file)]
+        csvs = [os.path.abspath(folderPath) + "\\" + file for file in os.listdir(directory) if file[-4:] == '.csv' or file[-4:] == '.txt' in str(file)] #Determines if is a file and if the mimetype and file extention is of a text format.
+        files = [csvFile for csvFile in csvs if mimetypes.guess_type(csvFile)[0] == 'text/csv'] #of the files that have csv extentions which ones have a consistent mimetype
     else:
         print("Please Provide a valid file in the \".csv\" format.")
 
@@ -73,10 +74,10 @@ def csvToSQL(isCustom,folderPath): #Function that creates CSV to SQL Table
             pprint("There is likely a problem with the settings entered. Please double check server permissions and specified database settings.")
             break # End Program
     
-        pprint(engine.execute(f"SELECT TOP (5) * FROM {tableName}").fetchall()) #show the sample data from Employee_Data table
+        pprint(engine.execute(f"SELECT TOP (5) * FROM [{tableName}]").fetchall()) #show the sample data from Employee_Data table
         pprint("Job Complete") #Print Completion Message
 
-csvToSQL(False,r'datatypeSheet.csv') #Run the program
+csvToSQL(False,r'G:\SampleDataset\samples\pkmn\pkmn2.csv') #Run the program
 
 #TODO Do something about encoding
 # More error handing
