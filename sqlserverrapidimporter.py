@@ -1,5 +1,5 @@
 #importing sql libraries
-import sqlalchemy, os, mimetypes
+import sqlalchemy, os, mimetypes, psutil
 import pandas as pd
 from dev import setup as setting
 from pprint import pprint
@@ -26,11 +26,23 @@ def csvToSQL(isCustom,folderPath): #Function that creates CSV to SQL Table
     iterator = 0 #Simple counter for loop. 
 
     #File/Directory Validation
+    avaliableRam = float(psutil.virtual_memory()[1])*.95
+    totalSize = 0
     if os.path.isfile(folderPath) and mimetypes.guess_type(folderPath)[0] == 'text/csv' and folderPath[-4:] == '.csv' or folderPath[-4:] == '.txt': #Determines if is a file and if the mimetype and file extention is of a text format.
-        files = [folderPath] #puts file in a list to be passed through a loop in the next step
+        if (os.path.getsize(folderPath)*2) < avaliableRam: #checks to see if the file size, doubled, is less than the currently aviable Ram. This is done because Pandas loads all data into memory and I read that you will need double the space of the orginal file.
+            files = [folderPath] #puts file in a list to be passed through a loop in the next step
+        else:
+            print("You do not have enough memory. Will need to split file.")
+            return
     elif os.path.isdir(folderPath):
         csvs = [os.path.abspath(folderPath) + "\\" + file for file in os.listdir(directory) if file[-4:] == '.csv' or file[-4:] == '.txt' in str(file)] #Determines if is a file and if the mimetype and file extention is of a text format.
-        files = [csvFile for csvFile in csvs if mimetypes.guess_type(csvFile)[0] == 'text/csv'] #of the files that have csv extentions which ones have a consistent mimetype
+        validcsvs = [csvFile for csvFile in csvs if mimetypes.guess_type(csvFile)[0] == 'text/csv'] #of the files that have csv extentions which ones have a consistent mimetype
+        for csv in validcsvs:
+            totalSize += os.path.getsize(csv)
+        if totalSize*2 < avaliableRam: #checks to see if the file size, doubled, is less than the currently aviable Ram. This is done because Pandas loads all data into memory and I read that you will need double the space of the orginal file. Also Python is bad at giving ram back to the OS.
+            files = validcsvs
+        else:
+            print("You do not have enough memory to process all of the files. Will need to get creative and spit files.")
     else:
         print("Please Provide a valid file in the \".csv\" format.")
 
@@ -38,7 +50,6 @@ def csvToSQL(isCustom,folderPath): #Function that creates CSV to SQL Table
         #if file extention is valid
         data = pd.read_csv (file) #Import CSV
         df = pd.DataFrame(data) #assign pandas dataframe to variable "df"
-        #df = df.replace(np.nan, 0)
         numOfColumns = (len(df.columns)) #Asigns the number of columns in the data frame to the variable "numOfColumns"
         
         if isCustom != True: #If isCustom does not euqal true then the program will default to assign data to varchar
@@ -77,10 +88,15 @@ def csvToSQL(isCustom,folderPath): #Function that creates CSV to SQL Table
         pprint(engine.execute(f"SELECT TOP (5) * FROM [{tableName}]").fetchall()) #show the sample data from Employee_Data table
         pprint("Job Complete") #Print Completion Message
 
-csvToSQL(False,r'G:\SampleDataset\samples\pkmn\pkmn2.csv') #Run the program
+csvToSQL(False,r'G:\SampleDataset\samples\pkmn') #Run the program
 
 #TODO Do something about encoding
+# split out validation to seperate function. 
 # More error handing
+# How to efficelty spit date to load into database
+#determine usage of bulk load
+#add timer
 #Performance and Unit testing??
 #implement cmd interface
 #Add support for Excel and Google Sheets
+#add customer logic
