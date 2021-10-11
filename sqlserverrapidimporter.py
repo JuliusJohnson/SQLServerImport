@@ -21,16 +21,14 @@ def dataTypeProcessor(file,dictionary,i,dfColumn): # Fuction that defines how SQ
     else:
         pprint("Invalid")
 
-def csvToSQL(isCustom,folderPath): #Function that creates CSV to SQL Table
-    dataTypeDict = {} #Empty variable that will contain a dictionary that contains key value pairs of Columns Name and Datatype 
-    iterator = 0 #Simple counter for loop. 
-
+def fileValidation(folderPath):
     #File/Directory Validation
     avaliableRam = float(psutil.virtual_memory()[1])*.95
     totalSize = 0
     if os.path.isfile(folderPath) and mimetypes.guess_type(folderPath)[0] == 'text/csv' and folderPath[-4:] == '.csv' or folderPath[-4:] == '.txt': #Determines if is a file and if the mimetype and file extention is of a text format.
         if (os.path.getsize(folderPath)*2) < avaliableRam: #checks to see if the file size, doubled, is less than the currently aviable Ram. This is done because Pandas loads all data into memory and I read that you will need double the space of the orginal file.
             files = [folderPath] #puts file in a list to be passed through a loop in the next step
+            return files
         else:
             print("You do not have enough memory. Will need to split file.")
             return
@@ -41,10 +39,18 @@ def csvToSQL(isCustom,folderPath): #Function that creates CSV to SQL Table
             totalSize += os.path.getsize(csv)
         if totalSize*2 < avaliableRam: #checks to see if the file size, doubled, is less than the currently aviable Ram. This is done because Pandas loads all data into memory and I read that you will need double the space of the orginal file. Also Python is bad at giving ram back to the OS.
             files = validcsvs
+            return files
         else:
             print("You do not have enough memory to process all of the files. Will need to get creative and spit files.")
     else:
         print("Please Provide a valid file in the \".csv\" format.")
+
+def csvToSQL(isCustom,folderPath): #Function that creates CSV to SQL Table
+    dataTypeDict = {} #Empty variable that will contain a dictionary that contains key value pairs of Columns Name and Datatype 
+    iterator = 0 #Simple counter for loop. 
+    encoding = 'utf-8'
+
+    files = fileValidation(folderPath)
 
     for file in files: #Loop that will process each file in the specified directory
         #if file extention is valid
@@ -67,7 +73,7 @@ def csvToSQL(isCustom,folderPath): #Function that creates CSV to SQL Table
                 dataTypeDict[column] = sqlalchemy.types.VARCHAR(length=maxLength) #For each column in dataframe asign the dictionary value a varchar with a maxmium length
 
         else: #If is Custom Is "True"
-            dataTypeFile = pd.read_csv(folderPath) #Read the customer data types in the CSV file
+            dataTypeFile = pd.read_csv(folderPath, encoding=encoding) #Read the customer data types in the CSV file
             if dataTypeFile.shape[0] == numOfColumns: #If the number of columns is equal to the number of columns in the dataframe continue
                 while iterator < numOfColumns: #Perform a loop iteration for each column as long as there are columns to iterate through
                     for column in df.columns: #for each column in the data frame perform the "DataTypeProcessor" function
