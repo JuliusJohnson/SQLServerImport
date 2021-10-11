@@ -56,12 +56,13 @@ def csvToSQL(isCustom,folderPath): #Function that creates CSV to SQL Table
             data = f.read(1000000)
             encoding=detect(data).get("encoding")
             print(f"The guessed encoding for \"{tableName}\" is {encoding}.")
+            f.close()
         return encoding
 
     files = fileValidation(folderPath)
 
     for file in files: #Loop that will process each file in the specified directory
-        tableName = str(str(os.path.basename(file)).replace(".csv","")) #Create Table Name
+        tableName = str(str(os.path.basename(file)).replace(".csv","").replace(".txt","")) #Create Table Name
         #if file extention is valid
         data = pd.read_csv (file, encoding=guessEncoding(file,tableName)) #Import CSV
         df = pd.DataFrame(data) #assign pandas dataframe to variable "df"
@@ -82,6 +83,7 @@ def csvToSQL(isCustom,folderPath): #Function that creates CSV to SQL Table
                 dataTypeDict[column] = sqlalchemy.types.VARCHAR(length=maxLength) #For each column in dataframe asign the dictionary value a varchar with a maxmium length
 
         else: #If is Custom Is "True"
+            print("Not fully support")
             dataTypeFile = pd.read_csv(folderPath, encoding=guessEncoding(file,tableName)) #Read the customer data types in the CSV file
             if dataTypeFile.shape[0] == numOfColumns: #If the number of columns is equal to the number of columns in the dataframe continue
                 while iterator < numOfColumns: #Perform a loop iteration for each column as long as there are columns to iterate through
@@ -101,15 +103,4 @@ def csvToSQL(isCustom,folderPath): #Function that creates CSV to SQL Table
         pprint(engine.execute(f"SELECT TOP (5) * FROM [{tableName}]").fetchall()) #show the sample data from Employee_Data table
         pprint("Job Complete") #Print Completion Message
 
-csvToSQL(False,r'G:\SampleDataset\samples\pkmn') #Run the program
-
-#TODO Do something about encoding
-# split out validation to seperate function. 
-# More error handing
-# How to efficelty spit date to load into database
-#determine usage of bulk load
-#add timer
-#Performance and Unit testing??
-#implement cmd interface
-#Add support for Excel and Google Sheets
-#add customer logic
+csvToSQL(False,r"C:\Users\Julius\Downloads\output-onlinerandomtools.txt") #Run the program
