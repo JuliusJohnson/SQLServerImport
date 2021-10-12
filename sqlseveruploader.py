@@ -1,10 +1,20 @@
 #importing sql libraries
 from re import L
-import sqlalchemy, os, mimetypes, psutil
+import sqlalchemy, os, mimetypes, psutil, argparse
 import pandas as pd
 from dev import setup as setting
 from charset_normalizer import detect
 from pprint import pprint
+
+
+parser = argparse.ArgumentParser(description = "A simple tool to just get data into a database.")
+
+# add argument
+parser.add_argument("filepath", nargs = '*', metavar = "filepath", type = str, 
+                     help = "The directory or direct file path of the target CSV file(s)")
+
+parser.add_argument("-schema", nargs = '?', metavar = "schema", type = str, 
+                     help = "The directory or direct file path of the target CSV file(s)")
 
 #Setting up variables that wil be used throughout the script
 directory = setting.directory #file directory
@@ -103,4 +113,8 @@ def csvToSQL(isCustom,folderPath): #Function that creates CSV to SQL Table
         pprint(engine.execute(f"SELECT TOP (5) * FROM [{tableName}]").fetchall()) #show the sample data from Employee_Data table
         pprint("Job Complete") #Print Completion Message
 
-csvToSQL(False,r"C:\Users\Julius\Downloads\output-onlinerandomtools.txt") #Run the program
+# parse the arguments from standard input
+args = parser.parse_args()
+
+if len(args.filepath) != 0:
+    csvToSQL(False,str(args.filepath[0])) #Run the program
