@@ -9,6 +9,7 @@ pyodbc = "*"
 sqlalchemy = "*"
 psutil = "*"
 charset-normalizer = "*"
+detect-delimiter = "*"
 
 [dev-packages]
 

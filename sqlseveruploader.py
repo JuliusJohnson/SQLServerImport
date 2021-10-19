@@ -1,9 +1,11 @@
 #importing sql libraries
 from re import L
-import sqlalchemy, os, mimetypes, psutil, argparse
+import sqlalchemy, os, mimetypes, psutil, argparse,csv,charset_normalizer, detect_delimiter
 import pandas as pd
+from sqlalchemy.engine.interfaces import Dialect
 from dev import setup as setting
-from charset_normalizer import detect
+# from charset_normalizer import detect
+# from detect_delimiter import detect
 from pprint import pprint
 
 
@@ -37,7 +39,8 @@ def fileValidation(folderPath):
     #File/Directory Validation
     avaliableRam = float(psutil.virtual_memory()[1])*.95
     totalSize = 0
-    if os.path.isfile(folderPath) and mimetypes.guess_type(folderPath)[0] == 'text/csv' and folderPath[-4:] == '.csv' or folderPath[-4:] == '.txt': #Determines if is a file and if the mimetype and file extention is of a text format.
+    print(mimetypes.guess_type(folderPath)[0].lower())
+    if os.path.isfile(folderPath) and (mimetypes.guess_type(folderPath)[0].lower() == 'text/csv' or mimetypes.guess_type(folderPath)[0].lower() == 'application/vnd.ms-excel') and folderPath[-4:] == '.csv' or folderPath[-4:] == '.txt': #Determines if is a file and if the mimetype and file extention is of a text format.
         if (os.path.getsize(folderPath)*2) < avaliableRam: #checks to see if the file size, doubled, is less than the currently aviable Ram. This is done because Pandas loads all data into memory and I read that you will need double the space of the orginal file.
             files = [folderPath] #puts file in a list to be passed through a loop in the next step
             return files
@@ -61,20 +64,31 @@ def csvToSQL(isCustom,folderPath): #Function that creates CSV to SQL Table
     dataTypeDict = {} #Empty variable that will contain a dictionary that contains key value pairs of Columns Name and Datatype 
     iterator = 0 #Simple counter for loop. 
     
-    def guessEncoding(csvFile, tableName):
+    def guessSettings(csvFile, tableName):
         with open(csvFile,'rb') as f:
-            data = f.read(1000000)
-            encoding=detect(data).get("encoding")
+            dataEncoding = f.read(1000000)
+            dataDelimiter = f.read(10000)
+            encoding=charset_normalizer.detect(dataEncoding).get("encoding")
+            delimiter=detect_delimiter.detect(str(dataDelimiter))
             print(f"The guessed encoding for \"{tableName}\" is {encoding}.")
+            print(f"The guessed delimiter for \"{tableName}\" is {delimiter}.")
             f.close()
-        return encoding
+        return encoding,delimiter
 
     files = fileValidation(folderPath)
-
+    print(files)
     for file in files: #Loop that will process each file in the specified directory
         tableName = str(str(os.path.basename(file)).replace(".csv","").replace(".txt","")) #Create Table Name
         #if file extention is valid
-        data = pd.read_csv (file, encoding=guessEncoding(file,tableName)) #Import CSV
+        try:
+            data = pd.read_csv (file, encoding=guessSettings(file,tableName)[0], dtype="unicode", sep=guessSettings(file,tableName)[1], quotechar= '"') #Import CSV
+        except pd.errors.ParserError:
+            data = pd.read_csv (file, encoding=guessSettings(file,tableName)[0], dtype="unicode") #Import CSV
+        except:
+            print("Rows had to be deleted from data")
+            data = pd.read_csv (file, encoding=guessSettings(file,tableName)[0], dtype="unicode", error_bad_lines= False)
+        
+
         df = pd.DataFrame(data) #assign pandas dataframe to variable "df"
         numOfColumns = (len(df.columns)) #Asigns the number of columns in the data frame to the variable "numOfColumns"
         
@@ -94,7 +108,7 @@ def csvToSQL(isCustom,folderPath): #Function that creates CSV to SQL Table
 
         else: #If is Custom Is "True"
             print("Not fully support")
-            dataTypeFile = pd.read_csv(folderPath, encoding=guessEncoding(file,tableName)) #Read the customer data types in the CSV file
+            dataTypeFile = pd.read_csv(file, encoding=guessSettings(file,tableName)[0], dtype="unicode", sep=guessSettings(file,tableName)[1]) #Read the customer data types in the CSV file
             if dataTypeFile.shape[0] == numOfColumns: #If the number of columns is equal to the number of columns in the dataframe continue
                 while iterator < numOfColumns: #Perform a loop iteration for each column as long as there are columns to iterate through
                     for column in df.columns: #for each column in the data frame perform the "DataTypeProcessor" function
@@ -104,11 +118,11 @@ def csvToSQL(isCustom,folderPath): #Function that creates CSV to SQL Table
                 pprint("Please check the number of columns in the specified spreadsheet. They do not match the number of columns in the CSV you want to import to SQL Server")
                 break #End Program
     
-        try: #Some simple error handling that handles incorrect database values such as schema, database name, etc...
-            df.to_sql(tableName, con = engine, if_exists='replace', index = False, dtype=dataTypeDict, schema=schema) #Insert Dataframe into SQL Server. If the Table exisit alreadt it will replace.
-        except sqlalchemy.exc.ProgrammingError: #If a programming Error is found then print and quit program
-            pprint("There is likely a problem with the settings entered. Please double check server permissions and specified database settings.")
-            break # End Program
+        #try: #Some simple error handling that handles incorrect database values such as schema, database name, etc...
+        df.to_sql(tableName, con = engine, if_exists='replace', index = False, dtype=dataTypeDict, schema=schema) #Insert Dataframe into SQL Server. If the Table exisit alreadt it will replace.
+        #except sqlalchemy.exc.ProgrammingError: #If a programming Error is found then print and quit program
+            #pprint("There is likely a problem with the settings entered. Please double check server permissions and specified database settings.")
+            #break # End Program
     
         pprint(engine.execute(f"SELECT TOP (5) * FROM [{tableName}]").fetchall()) #show the sample data from Employee_Data table
         pprint("Job Complete") #Print Completion Message
@@ -116,5 +130,4 @@ def csvToSQL(isCustom,folderPath): #Function that creates CSV to SQL Table
 # parse the arguments from standard input
 args = parser.parse_args()
 
-if len(args.filepath) != 0:
-    csvToSQL(False,str(args.filepath[0])) #Run the program
+csvToSQL(False,r"C:\Users\Julius\Downloads\TwitterData - Sheet1.csv") #Run the program
